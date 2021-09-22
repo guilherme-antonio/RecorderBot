@@ -1,4 +1,5 @@
 import discord
+import json
 
 client = discord.Client()
 
@@ -8,6 +9,11 @@ async def on_message(message):
         return
 
     if message.content.startswith('-s'):
-        message
+        await message.channel.send("Oi :P")
 
-client.run('')
+
+with open("token.json") as jsonFile:
+    jsonObject = json.load(jsonFile)
+    jsonFile.close()
+
+client.run(jsonObject['token'])
