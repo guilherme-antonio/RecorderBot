@@ -36,7 +36,7 @@ class Music(commands.Cog):
             else:
                 voice = await channel.connect()
 
-            player = await YTDLSource.from_url(message.content, loop=False)
+            player = await YTDLSource.from_url(message.content, loop=False, stream=True)
 
             voice.play(player)
 
