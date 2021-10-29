@@ -1,3 +1,4 @@
+import asyncio
 from discord.ext import commands
 from discord.utils import get
 import json
@@ -8,6 +9,29 @@ class Music(commands.Cog):
         self.bot = bot
         self.listen_channel = None
         self.history_channel = None
+        self.queue = []
+        self.is_playing = False
+        self.voice = None
+
+    async def play_next(self, e):
+        if e:
+            print('Player error: %s' % e)
+        else:
+            await self.play_track()
+
+    async def play_track(self):
+        next_track = self.queue.pop(0)
+
+        if (next_track is not None):
+            self.is_playing = True
+            self.voice.play(next_track, 
+            after = lambda e:
+            asyncio.run(self.play_next(e)))
+
+            if (self.history_channel is not None):
+                self.bot.loop.create_task(self.history_channel.send('Playing'))
+        else:
+            self.is_playing = False
 
     @commands.command()
     async def listen(self, ctx):
@@ -36,12 +60,16 @@ class Music(commands.Cog):
             else:
                 voice = await channel.connect()
 
+            self.voice = voice
+
             player = await YTDLSource.from_url(message.content, loop=False, stream=True)
 
-            voice.play(player)
-
+            self.queue.append(player)
             if (self.history_channel is not None):
-                await self.history_channel.send('Listening')
+                await self.history_channel.send('Added to queue')
+            
+            if not self.is_playing:
+                await self.play_track()
 
 with open("token.json") as jsonFile:
     jsonObject = json.load(jsonFile)
