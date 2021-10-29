@@ -28,8 +28,8 @@ class Music(commands.Cog):
             after = lambda e:
             asyncio.run(self.play_next(e)))
 
-            if (self.history_channel is not None):
-                self.bot.loop.create_task(self.history_channel.send('Playing'))
+            #if (self.history_channel is not None):
+                #self.bot.loop.create_task(self.history_channel.send('Playing'))
         else:
             self.is_playing = False
 
@@ -62,14 +62,16 @@ class Music(commands.Cog):
 
             self.voice = voice
 
-            player = await YTDLSource.from_url(message.content, loop=False, stream=True)
+            player, title, url = await YTDLSource.from_url(message.content, loop=False, stream=True)
 
             self.queue.append(player)
             if (self.history_channel is not None):
-                await self.history_channel.send('Added to queue')
+                await self.history_channel.send(f'{message.author.mention} added {title}({url})')
             
             if not self.is_playing:
                 await self.play_track()
+
+            await message.delete()
 
 with open("token.json") as jsonFile:
     jsonObject = json.load(jsonFile)

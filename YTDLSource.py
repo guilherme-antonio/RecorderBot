@@ -41,4 +41,4 @@ class YTDLSource(PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data), data['title'], data.get('webpage_url')
