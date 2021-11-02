@@ -14,14 +14,21 @@ class Music(commands.Cog):
         self.queue_message = None
         self.current_video = None
         self.voice = None
+        self.is_paused = False
+        self.loop = None
 
-    async def play_next(self, e):
+    def play_next(self, e):
         if e:
             print('Player error: %s' % e)
         else:
-            await self.play_video()
+            self.bot.loop.create_task(self.play_video())
 
     async def play_video(self):
+        if (len(self.queue) == 0):
+            await self.queue_message.delete()
+            self.queue_message = None
+            return
+
         self.current_video = self.queue.pop(0)
 
         await self.show_queue()
@@ -29,7 +36,7 @@ class Music(commands.Cog):
         if (self.current_video is not None):
             self.voice.play(self.current_video.source, 
             after = lambda e:
-            asyncio.run(self.play_next(e)))
+            self.play_next(e))
         else:
             self.current_video = None
 
@@ -59,6 +66,21 @@ class Music(commands.Cog):
     async def history(self, ctx):
         self.history_channel = ctx.message.channel
         await self.history_channel.send('History channel setted')
+
+    async def resume(self):
+        self.voice.resume()
+        self.is_paused = False
+
+    async def pause(self):
+        self.voice.pause()
+        self.is_paused = True
+
+    async def stop(self):
+        self.queue = []
+        self.voice.stop()
+
+    async def skip(self):
+        self.voice.stop()
 
     @commands.command()
     async def clear(self, ctx, amount=5):
@@ -93,6 +115,26 @@ class Music(commands.Cog):
                 await self.show_queue()
 
             await message.delete()
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        if user == self.bot.user:
+                return
+
+        if (reaction.message == self.queue_message):
+            if (reaction.emoji == '⏯️'):
+                if (self.is_paused):
+                    await self.resume()
+                else:
+                    await self.pause()
+            elif (reaction.emoji == '⏹'):
+                await self.stop()
+            elif (reaction.emoji == '⏭️'):
+                await self.skip()
+        
+        await reaction.remove(user)
+                
+
 
 with open("token.json") as jsonFile:
     jsonObject = json.load(jsonFile)
