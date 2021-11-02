@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.utils import get
 import json
 from YTDLSource import YTDLSource
+from video import Video
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -10,28 +11,44 @@ class Music(commands.Cog):
         self.listen_channel = None
         self.history_channel = None
         self.queue = []
-        self.is_playing = False
+        self.queue_message = None
+        self.current_video = None
         self.voice = None
 
     async def play_next(self, e):
         if e:
             print('Player error: %s' % e)
         else:
-            await self.play_track()
+            await self.play_video()
 
-    async def play_track(self):
-        next_track = self.queue.pop(0)
+    async def play_video(self):
+        self.current_video = self.queue.pop(0)
 
-        if (next_track is not None):
-            self.is_playing = True
-            self.voice.play(next_track, 
+        await self.show_queue()
+
+        if (self.current_video is not None):
+            self.voice.play(self.current_video.source, 
             after = lambda e:
             asyncio.run(self.play_next(e)))
-
-            #if (self.history_channel is not None):
-                #self.bot.loop.create_task(self.history_channel.send('Playing'))
         else:
-            self.is_playing = False
+            self.current_video = None
+
+    async def show_queue(self):
+        if self.current_video is not None:
+            message = f"Current playing {self.current_video.title}"
+        else:
+            message = ""
+
+        for index, video in enumerate(self.queue):
+            message = f"{index + 1} - {video.title}\n{message}"
+
+        if (self.queue_message is None):
+            self.queue_message = await self.listen_channel.send(message)
+            await self.queue_message.add_reaction('⏯️')
+            await self.queue_message.add_reaction('⏹')
+            await self.queue_message.add_reaction('⏭️')
+        else:
+            await self.queue_message.edit(content= message)
 
     @commands.command()
     async def listen(self, ctx):
@@ -64,12 +81,16 @@ class Music(commands.Cog):
 
             player, title, url = await YTDLSource.from_url(message.content, loop=False, stream=True)
 
-            self.queue.append(player)
+            video = Video(player, title)
+
+            self.queue.append(video)
             if (self.history_channel is not None):
                 await self.history_channel.send(f'{message.author.mention} added {title}({url})')
             
-            if not self.is_playing:
-                await self.play_track()
+            if self.current_video is None:
+                await self.play_video()
+            else:
+                await self.show_queue()
 
             await message.delete()
 
