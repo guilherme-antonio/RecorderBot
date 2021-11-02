@@ -82,9 +82,9 @@ class Music(commands.Cog):
     async def skip(self):
         self.voice.stop()
 
-    @commands.command()
-    async def clear(self, ctx, amount=5):
-        await ctx.channel.purge(limit=amount)
+    #@commands.command()
+    #async def clear(self, ctx, amount=5):
+    #    await ctx.channel.purge(limit=amount)
 
     @commands.Cog.listener()
     async def on_message(self, message):
