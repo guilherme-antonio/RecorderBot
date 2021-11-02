@@ -27,6 +27,7 @@ class Music(commands.Cog):
         if (len(self.queue) == 0):
             await self.queue_message.delete()
             self.queue_message = None
+            self.current_video = None
             return
 
         self.current_video = self.queue.pop(0)
@@ -56,6 +57,31 @@ class Music(commands.Cog):
             await self.queue_message.add_reaction('⏭️')
         else:
             await self.queue_message.edit(content= message)
+
+    @commands.command()
+    async def config(self, ctx):
+        guild = ctx.guild
+        with open('config.json') as jsonFile:
+            jsonObject = json.load(jsonFile)
+            jsonFile.close()
+        
+            if 'listen' not in jsonObject:
+                self.listen_channel = await guild.create_text_channel(name="bot")
+
+                jsonObject['listen'] = self.listen_channel.id
+            else:
+                self.listen_channel = guild.get_channel(jsonObject['listen'])
+
+            if 'history' not in jsonObject:
+                self.history_channel = await guild.create_text_channel(name="bot-history")
+
+                jsonObject['history'] = self.history_channel.id
+            else:
+                self.history_channel = guild.get_channel(jsonObject['history'])
+
+        with open('config.json', 'w') as jsonFile:
+            jsonSerialized = json.dumps(jsonObject)
+            jsonFile.write(jsonSerialized)
 
     @commands.command()
     async def listen(self, ctx):
@@ -107,7 +133,7 @@ class Music(commands.Cog):
 
             self.queue.append(video)
             if (self.history_channel is not None):
-                await self.history_channel.send(f'{message.author.mention} added {title}({url})')
+                await self.history_channel.send(f'{message.author.display_name} added {title}({url})')
             
             if self.current_video is None:
                 await self.play_video()
@@ -133,10 +159,33 @@ class Music(commands.Cog):
                 await self.skip()
         
         await reaction.remove(user)
-                
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        with open('config.json') as jsonFile:
+            jsonObject = json.load(jsonFile)
+            jsonFile.close()
+        
+            if 'listen' not in jsonObject:
+                self.listen_channel = await guild.create_text_channel(name="bot")
+
+                jsonObject['listen'] = self.listen_channel.id
+            else:
+                self.listen_channel = guild.get_channel(jsonObject['listen'])
+
+            if 'history' not in jsonObject:
+                self.history_channel = await guild.create_text_channel(name="bot-history")
+
+                jsonObject['history'] = self.history_channel.id
+            else:
+                self.history_channel = guild.get_channel(jsonObject['history'])
+
+        with open('config.json', 'w') as jsonFile:
+            jsonSerialized = json.dumps(jsonObject)
+            jsonFile.write(jsonSerialized)
 
 
-with open("token.json") as jsonFile:
+with open('token.json') as jsonFile:
     jsonObject = json.load(jsonFile)
     jsonFile.close()
 
