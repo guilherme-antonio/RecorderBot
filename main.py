@@ -173,3 +173,4 @@ class Music(commands.Cog):
 bot = commands.Bot(command_prefix='!')
 bot.add_cog(Music(bot))
 bot.run(os.getenv('TOKEN'))
+print('End of execution')
