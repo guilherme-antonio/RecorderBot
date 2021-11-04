@@ -130,7 +130,9 @@ class Music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        print('on_ready start')
         await self.json_guild_config()
+        print('on_ready end')
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
