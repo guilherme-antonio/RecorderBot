@@ -5,6 +5,10 @@ from discord import Embed
 from discord import Colour
 import json
 from YTDLSource import YTDLSource
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -125,11 +129,7 @@ class Music(commands.Cog):
         await reaction.remove(user)
 
     @commands.Cog.listener()
-    async def on_ready():
-        print(f'{client.user} has connected do Discord')
-
-    @commands.Cog.listener()
-    async def on_connect(self):
+    async def on_ready(self):
         await self.json_guild_config()
 
     @commands.Cog.listener()
@@ -170,12 +170,6 @@ class Music(commands.Cog):
             jsonSerialized = json.dumps(jsonObject)
             jsonFile.write(jsonSerialized)
 
-
-with open('token.json') as jsonFile:
-    jsonObject = json.load(jsonFile)
-    jsonFile.close()
-
 bot = commands.Bot(command_prefix='!')
 bot.add_cog(Music(bot))
-bot.run(jsonObject['token'])
-print('End of execution')
+bot.run(os.getenv('TOKEN'))
