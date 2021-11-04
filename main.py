@@ -125,6 +125,10 @@ class Music(commands.Cog):
         await reaction.remove(user)
 
     @commands.Cog.listener()
+    async def on_ready():
+        print(f'{client.user} has connected do Discord')
+
+    @commands.Cog.listener()
     async def on_connect(self):
         await self.json_guild_config()
 
@@ -174,3 +178,4 @@ with open('token.json') as jsonFile:
 bot = commands.Bot(command_prefix='!')
 bot.add_cog(Music(bot))
 bot.run(jsonObject['token'])
+print('End of execution')
