@@ -1,9 +1,10 @@
-import asyncio
+from os import error
 from discord.ext import commands
 from discord.utils import get
+from discord import Embed
+from discord import Colour
 import json
 from YTDLSource import YTDLSource
-from video import Video
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -35,7 +36,7 @@ class Music(commands.Cog):
         await self.show_queue()
 
         if (self.current_video is not None):
-            self.voice.play(self.current_video.source, 
+            self.voice.play(self.current_video, 
             after = lambda e:
             self.play_next(e))
         else:
@@ -43,55 +44,24 @@ class Music(commands.Cog):
 
     async def show_queue(self):
         if self.current_video is not None:
-            message = f"Current playing {self.current_video.title}"
+            embed = Embed(colour= Colour.gold(), title= f'[{self.current_video.duration}] - {self.current_video.title}')
+            embed.set_image(url= self.current_video.thumbnail)
+            embed.set_footer(text= f'{len(self.queue)} songs in queue')
         else:
-            message = ""
+            embed = Embed.Empty
+
+        message = ''
 
         for index, video in enumerate(self.queue):
-            message = f"{index + 1} - {video.title}\n{message}"
+            message = f'{index + 1}. {video.title} [{video.duration}]\n{message}'
 
         if (self.queue_message is None):
-            self.queue_message = await self.listen_channel.send(message)
+            self.queue_message = await self.listen_channel.send(content= message, embed= embed)
             await self.queue_message.add_reaction('⏯️')
             await self.queue_message.add_reaction('⏹')
             await self.queue_message.add_reaction('⏭️')
         else:
-            await self.queue_message.edit(content= message)
-
-    @commands.command()
-    async def config(self, ctx):
-        guild = ctx.guild
-        with open('config.json') as jsonFile:
-            jsonObject = json.load(jsonFile)
-            jsonFile.close()
-        
-            if 'listen' not in jsonObject:
-                self.listen_channel = await guild.create_text_channel(name="bot")
-
-                jsonObject['listen'] = self.listen_channel.id
-            else:
-                self.listen_channel = guild.get_channel(jsonObject['listen'])
-
-            if 'history' not in jsonObject:
-                self.history_channel = await guild.create_text_channel(name="bot-history")
-
-                jsonObject['history'] = self.history_channel.id
-            else:
-                self.history_channel = guild.get_channel(jsonObject['history'])
-
-        with open('config.json', 'w') as jsonFile:
-            jsonSerialized = json.dumps(jsonObject)
-            jsonFile.write(jsonSerialized)
-
-    @commands.command()
-    async def listen(self, ctx):
-        self.listen_channel = ctx.message.channel
-        await self.listen_channel.send('Listen channel setted')
-
-    @commands.command()
-    async def history(self, ctx):
-        self.history_channel = ctx.message.channel
-        await self.history_channel.send('History channel setted')
+            await self.queue_message.edit(content= message, embed= embed)
 
     async def resume(self):
         self.voice.resume()
@@ -108,10 +78,6 @@ class Music(commands.Cog):
     async def skip(self):
         self.voice.stop()
 
-    #@commands.command()
-    #async def clear(self, ctx, amount=5):
-    #    await ctx.channel.purge(limit=amount)
-
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:
@@ -127,13 +93,11 @@ class Music(commands.Cog):
 
             self.voice = voice
 
-            player, title, url = await YTDLSource.from_url(message.content, loop=False, stream=True)
+            player = await YTDLSource.from_url(message.content, loop=False, stream=True)
 
-            video = Video(player, title)
-
-            self.queue.append(video)
+            self.queue.append(player)
             if (self.history_channel is not None):
-                await self.history_channel.send(f'{message.author.display_name} added {title}({url})')
+                await self.history_channel.send(f'{message.author.display_name} added {player.title} ({player.webpage_url})')
             
             if self.current_video is None:
                 await self.play_video()
@@ -161,20 +125,38 @@ class Music(commands.Cog):
         await reaction.remove(user)
 
     @commands.Cog.listener()
+    async def on_connect(self):
+        await self.json_guild_config()
+
+    @commands.Cog.listener()
     async def on_guild_join(self, guild):
+        await self.json_guild_config(guild)
+
+    @commands.command()
+    async def config(self, ctx):
+        guild = ctx.guild
+        await self.json_guild_config(guild)
+
+    async def json_guild_config(self, guild = None):
         with open('config.json') as jsonFile:
             jsonObject = json.load(jsonFile)
             jsonFile.close()
+
+            if (guild is None):
+                if 'guild' in jsonObject:
+                    guild = self.bot.get_guild(jsonObject['guild'])
+                else:
+                    return
         
             if 'listen' not in jsonObject:
-                self.listen_channel = await guild.create_text_channel(name="bot")
+                self.listen_channel = await guild.create_text_channel(name='bot')
 
                 jsonObject['listen'] = self.listen_channel.id
             else:
                 self.listen_channel = guild.get_channel(jsonObject['listen'])
 
             if 'history' not in jsonObject:
-                self.history_channel = await guild.create_text_channel(name="bot-history")
+                self.history_channel = await guild.create_text_channel(name='bot-history')
 
                 jsonObject['history'] = self.history_channel.id
             else:

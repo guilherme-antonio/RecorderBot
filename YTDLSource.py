@@ -1,4 +1,5 @@
 import asyncio
+import time
 from youtube_dl import YoutubeDL
 from discord import FFmpegPCMAudio, PCMVolumeTransformer
 
@@ -30,6 +31,9 @@ class YTDLSource(PCMVolumeTransformer):
 
         self.title = data.get('title')
         self.url = data.get('url')
+        self.webpage_url = data.get('webpage_url')
+        self.thumbnail = data.get('thumbnail')
+        self.duration = time.strftime('%M:%S', time.gmtime(data.get('duration')))
 
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
@@ -41,4 +45,4 @@ class YTDLSource(PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data), data['title'], data.get('webpage_url')
+        return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
