@@ -126,7 +126,7 @@ class Music(commands.Cog):
             elif (reaction.emoji == '⏭️'):
                 await self.skip()
         
-        await reaction.remove(user)
+            await reaction.remove(user)
 
     @commands.Cog.listener()
     async def on_ready(self):
