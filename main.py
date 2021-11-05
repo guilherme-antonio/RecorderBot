@@ -1,4 +1,3 @@
-from os import error
 from discord.ext import commands
 from discord.utils import get
 from discord import Embed
@@ -7,6 +6,7 @@ import json
 from YTDLSource import YTDLSource
 from dotenv import load_dotenv
 import os
+import asyncio
 
 load_dotenv()
 
@@ -22,6 +22,17 @@ class Music(commands.Cog):
         self.is_paused = False
         self.loop = None
 
+    async def inactive_checker(self):
+        await self.bot.wait_until_ready()
+
+        await asyncio.sleep(60)
+
+        if (len(self.queue) == 0 and self.current_video is None):
+            await self.disconnect_from_channel()
+
+    async def disconnect_from_channel(self):
+        await self.voice.disconnect()
+
     def play_next(self, e):
         if e:
             print('Player error: %s' % e)
@@ -33,6 +44,7 @@ class Music(commands.Cog):
             await self.queue_message.delete()
             self.queue_message = None
             self.current_video = None
+            self.bot.loop.create_task(self.inactive_checker())
             return
 
         self.current_video = self.queue.pop(0)
@@ -43,8 +55,6 @@ class Music(commands.Cog):
             self.voice.play(self.current_video, 
             after = lambda e:
             self.play_next(e))
-        else:
-            self.current_video = None
 
     async def show_queue(self):
         if self.current_video is not None:
