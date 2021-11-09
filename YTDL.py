@@ -17,11 +17,29 @@ ytdl_format_options = {
     'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
+ytdl_format_options_info = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'dumpjson': True,
+    'skip_download': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+
 ffmpeg_options = {
     'options': '-vn'
 }
 
 ytdl = YoutubeDL(ytdl_format_options)
+ytdl_info = YoutubeDL(ytdl_format_options_info)
 
 class YTDLSource(PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -46,3 +64,20 @@ class YTDLSource(PCMVolumeTransformer):
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
+class YTDLInfo():
+    def __init__(self, data):
+        self.title = data.get('title')
+        self.webpage_url = data.get('webpage_url')
+        self.duration = time.strftime('%M:%S', time.gmtime(data.get('duration')))
+
+    @classmethod
+    async def get_info(cls, url, *, loop=None):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl_info.extract_info(url, download=True))
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        return cls(data)

@@ -3,7 +3,7 @@ from discord.utils import get
 from discord import Embed
 from discord import Colour
 import json
-from YTDLSource import YTDLSource
+from YTDL import YTDLInfo, YTDLSource
 from dotenv import load_dotenv
 import os
 import asyncio
@@ -47,7 +47,8 @@ class Music(commands.Cog):
             self.bot.loop.create_task(self.inactive_checker())
             return
 
-        self.current_video = self.queue.pop(0)
+        current_video_info = self.queue.pop(0)
+        self.current_video = await YTDLSource.from_url(current_video_info.webpage_url, loop=False, stream=True)
 
         await self.show_queue()
 
@@ -107,7 +108,7 @@ class Music(commands.Cog):
 
             self.voice = voice
 
-            player = await YTDLSource.from_url(message.content, loop=False, stream=True)
+            player = await YTDLInfo.get_info(message.content, loop=False)
 
             self.queue.append(player)
             if (self.history_channel is not None):
