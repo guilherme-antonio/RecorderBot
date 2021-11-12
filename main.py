@@ -108,6 +108,21 @@ class Music(commands.Cog):
         #asyncio.run(self.add_video_to_queue(message, video))
         self.bot.loop.create_task(self.add_video_to_queue(message, video))
 
+    async def process_videos(self, message, starting_index):
+        result, keep_extracting = await YTDLInfo.get_info(message.content, loop=False, starting_index = starting_index)
+
+        for video in result:
+            self.queue.append(video)
+            self.executor.submit(self.add_video_to_queue_task, message, video) 
+
+            if self.current_video is None:
+                await self.play_video()
+
+        await self.show_queue()
+
+        if (keep_extracting):
+            await self.process_videos(message, (starting_index + YTDLInfo.index_step + 1))
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:
@@ -123,18 +138,8 @@ class Music(commands.Cog):
 
             self.voice = voice
 
-            result = await YTDLInfo.get_info(message.content, loop=False)
-
-            for video in result:
-                self.queue.append(video)
-                self.executor.submit(self.add_video_to_queue_task, message, video) 
-
-                if self.current_video is None:
-                    await self.play_video()
-
-            await self.show_queue()
-
             await message.delete()
+            await self.process_videos(message, 1)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):

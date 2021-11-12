@@ -7,7 +7,6 @@ ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'yes-playlist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -18,16 +17,11 @@ ytdl_format_options = {
 }
 
 ytdl_format_options_info = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'yes-playlist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
+    'simulate': True,
     'quiet': True,
-    'dumpjson': True,
-    'skip_download': True,
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
@@ -71,17 +65,27 @@ class YTDLInfo():
         self.webpage_url = data.get('webpage_url')
         self.duration = time.strftime('%M:%S', time.gmtime(data.get('duration')))
 
+    index_step = 2
+
     @classmethod
-    async def get_info(cls, url, *, loop=None):
+    async def get_info(cls, url, *, loop=None, starting_index):
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl_info.extract_info(url, download=True))
+        step_info = {
+            'playliststart': starting_index,
+            'playlistend': (starting_index + YTDLInfo.index_step)
+        }
+        ytdl_info.params.update(step_info)
+        data = await loop.run_in_executor(None, lambda: ytdl_info.extract_info(url, download=False))
 
         entries = []
+        keep_extracting = False
 
         if 'entries' in data:
+            if len(data['entries']) >= YTDLInfo.index_step:
+                keep_extracting = True
             for entry in data['entries']:
                 entries.append(cls(entry))
         else:
             entries.append(cls(data))
         
-        return entries
+        return entries, keep_extracting
