@@ -93,6 +93,11 @@ class Music(commands.Cog):
     async def skip(self):
         self.voice.stop()
 
+    async def add_video_to_queue(self, message, video):
+        self.queue.append(video)
+        if (self.history_channel is not None):
+            await self.history_channel.send(f'{message.author.display_name} added {video.title} ({video.webpage_url})')
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author == self.bot.user:
@@ -108,11 +113,10 @@ class Music(commands.Cog):
 
             self.voice = voice
 
-            player = await YTDLInfo.get_info(message.content, loop=False)
+            result = await YTDLInfo.get_info(message.content, loop=False)
 
-            self.queue.append(player)
-            if (self.history_channel is not None):
-                await self.history_channel.send(f'{message.author.display_name} added {player.title} ({player.webpage_url})')
+            for video in result:
+                await self.add_video_to_queue(message, video)
             
             if self.current_video is None:
                 await self.play_video()

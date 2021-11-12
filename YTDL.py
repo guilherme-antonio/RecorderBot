@@ -7,7 +7,7 @@ ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': True,
+    'yes-playlist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -21,7 +21,7 @@ ytdl_format_options_info = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': True,
+    'yes-playlist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -76,8 +76,12 @@ class YTDLInfo():
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl_info.extract_info(url, download=True))
 
-        if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
+        entries = []
 
-        return cls(data)
+        if 'entries' in data:
+            for entry in data['entries']:
+                entries.append(cls(entry))
+        else:
+            entries.append(cls(data))
+        
+        return entries
