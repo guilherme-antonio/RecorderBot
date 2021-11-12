@@ -7,6 +7,7 @@ from YTDL import YTDLInfo, YTDLSource
 from dotenv import load_dotenv
 import os
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ class Music(commands.Cog):
         self.voice = None
         self.is_paused = False
         self.loop = None
+        self.executor = ThreadPoolExecutor(5)
 
     async def inactive_checker(self):
         await self.bot.wait_until_ready()
@@ -68,7 +70,12 @@ class Music(commands.Cog):
         message = ''
 
         for index, video in enumerate(self.queue):
-            message = f'{index + 1}. {video.title} [{video.duration}]\n{message}'
+            if (index <= 10):
+                message = f'{index + 1}. {video.title} [{video.duration}]\n{message}'
+            else:
+                remaining_videos = len(self.queue) - 10
+                message = f'+{remaining_videos} songs\n{message}'
+                break
 
         if (self.queue_message is None):
             self.queue_message = await self.listen_channel.send(content= message, embed= embed)
@@ -94,9 +101,12 @@ class Music(commands.Cog):
         self.voice.stop()
 
     async def add_video_to_queue(self, message, video):
-        self.queue.append(video)
         if (self.history_channel is not None):
             await self.history_channel.send(f'{message.author.display_name} added {video.title} ({video.webpage_url})')
+
+    def add_video_to_queue_task(self, message, video):
+        #asyncio.run(self.add_video_to_queue(message, video))
+        self.bot.loop.create_task(self.add_video_to_queue(message, video))
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -116,12 +126,13 @@ class Music(commands.Cog):
             result = await YTDLInfo.get_info(message.content, loop=False)
 
             for video in result:
-                await self.add_video_to_queue(message, video)
-            
-            if self.current_video is None:
-                await self.play_video()
-            else:
-                await self.show_queue()
+                self.queue.append(video)
+                self.executor.submit(self.add_video_to_queue_task, message, video) 
+
+                if self.current_video is None:
+                    await self.play_video()
+
+            await self.show_queue()
 
             await message.delete()
 
